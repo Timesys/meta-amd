@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# where to setup the environment
+TARGET=$1
+
+# branch to be used by LAYERS
+RELEASE="daisy"
+
+# These layers are used by our local.conf
+LAYERS=" \
+git://git.yoctoproject.org/poky \
+git://git.openembedded.org/meta-openembedded \
+git://github.com/Timesys/meta-amd \
+"
+
+if [ -z "$TARGET" ]; then
+	echo "Please specify a target dir to install yocto for Gizmo!"
+	echo "If dir does not exist it will be created"
+	exit 1
+fi
+
+if [ ! -d $TARGET ]; then
+	echo "Creating $TARGET"
+	mkdir -p $TARGET
+
+	cd $TARGET
+	# use absolute path for TARGET from here..
+	TARGET=$PWD
+
+	for l in $LAYERS; do
+		git clone -b $RELEASE $l || exit
+	done
+	echo "All layers cloned. Creating configuration..."
+
+	source poky/oe-init-build-env build 2>&1 > /dev/null
+
+	echo "Setting up bblayers.conf to specify $TARGET"
+	cat > conf/bblayers.conf << EOF
+# LAYER_CONF_VERSION is increased each time build/conf/bblayers.conf
+# changes incompatibly
+LCONF_VERSION = "6"
+
+BBPATH = "\${TOPDIR}"
+BBFILES ?= ""
+
+BBLAYERS ?= " \\
+  ${TARGET}/poky/meta \\
+  ${TARGET}/poky/meta-yocto \\
+  ${TARGET}/poky/meta-yocto-bsp \\
+  ${TARGET}/meta-openembedded/meta-oe \\
+  ${TARGET}/meta-amd/common \\
+  ${TARGET}/meta-amd/meta-steppeeagle \\
+  "
+BBLAYERS_NON_REMOVABLE ?= " \\
+  ${TARGET}/poky/meta \\
+  ${TARGET}/poky/meta-yocto \\
+  "
+EOF
+	sed -i 's!^MACHINE.*!MACHINE ??= "steppeeagle"!' conf/local.conf
+	echo -e "Setup succeeded.\nRun 'bitbake <image>' to create a Gizmo image"
+else
+	if [ -f $TARGET/poky/oe-init-build-env ]; then
+		echo "Found $TARGET env, activating existing env..."
+		source $TARGET/poky/oe-init-build-env $TARGET/build
+	else
+		echo "$TARGET already exists but doesn't contain poky! Quitting."
+	fi
+fi
