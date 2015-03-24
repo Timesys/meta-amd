@@ -1,3 +1,13 @@
+This is a fork of git.yoctoproject.org/meta-amd to provide an easy
+method to build a bsp for the AMD Gizmo.
+
+To setup or activate the build environment, run:
+
+source setup-gizmo-env <target-dir>
+
+The setup script will create a target-dir and populate it with the
+necessary layers and configuration to build core-image-* for gizmo.
+
 meta-amd
 ==========
 
